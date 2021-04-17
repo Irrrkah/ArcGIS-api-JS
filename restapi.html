@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>api</title>
+    <style>
+        html, body, #viewDiv {
+          padding: 0;
+          margin: 0;
+          height: 100%;
+          width: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.16/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.16/"></script>
+
+    <script>
+        require([ 
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/smartMapping/statistics/histogram",
+            "esri/widgets/Histogram",
+            ],
+            function(Map, MapView, FeatureLayer, histogram, Histogram){
+                let myMap = new Map({
+                    basemap: 'gray-vector'
+                });
+
+                let mapView = new MapView({
+                    map: myMap,
+                    container: 'viewDiv',
+                    center: [-118.2, 34.0],
+                    zoom: 10
+                }); 
+
+                let rest = new FeatureLayer({
+                    url: 'https://services9.arcgis.com/tuaF829zGxPzrij9/arcgis/rest/services/restaurants_active_26k/FeatureServer',
+                    outFields: ["*"],
+                });
+            
+                myMap.add(rest);
+
+                // HIST
+                // mapView.ui.add("containerDiv", "bottom-left"); if added it can't be hidden
+                histogram({
+                    layer: rest,
+                    field: "mn_pnts",
+                    numBins: 100
+                }).then(function(histogramResult) {
+                    const histogramChart = Histogram.fromHistogramResult(histogramResult);
+                    histogramChart.container = "containerDiv";
+                })
+                // mapView.ui.add("containerDiv", 'bottom-left');
+                
+                
+                
+                var sqlExpressions = [
+                    "mn_pnts > 90",
+                    "mn_pnts > 98"
+                ];
+                var selectFilter = document.createElement("select");
+                selectFilter.setAttribute("class", "esri-widget esri-select");
+                selectFilter.setAttribute(
+                    "style", "width: 275px; font-family: Avenir Next W00; font-size: 1em;"
+                );
+                sqlExpressions.forEach(function (sql) {
+                    var option = document.createElement("option");
+                    option.value = sql;
+                    option.innerHTML = sql;
+                    selectFilter.appendChild(option);
+                });
+                mapView.ui.add(selectFilter, "top-right");
+
+                function setFeatureLayerViewFilter(expression) {
+                    mapView.whenLayerView(rest).then(function (featureLayerView) {
+                        featureLayerView.filter = {
+                        where: expression
+                        };
+                    });
+                }
+                selectFilter.addEventListener("change", function (event) {
+                    setFeatureLayerViewFilter(event.target.value);
+                });
+
+            }) // REQUIRE
+    </script>
+</head>
+<body>
+    <div id="viewDiv"></div>
+    <div id="containerDiv" style = 'background-color:rgb(65, 46, 46); width: 400px; height: 300px'></div>
+    
+</body>
+</html>

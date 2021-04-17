@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        html, body, #viewDiv {
+          padding: 0;
+          margin: 0;
+          height: 100%;
+          width: 100%;
+        }
+    </style>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.14/esri/themes/light/main.css">
+    <script src="https://js.arcgis.com/4.14/"></script>
+</head>
+<body>
+    <div id='viewDiv'></div>
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/request",
+            "esri/tasks/support/Query",
+            "esri/PopupTemplate",
+            "esri/widgets/Legend",
+            "esri/widgets/Expand",
+        ], function(Map, MapView, FeatureLayer, Request, Query, PopupTemplate, Legend, Expand){
+            let myMap = new Map({
+                basemap: 'gray-vector'
+            });
+
+            let myView = new MapView({
+                map: myMap,
+                container: 'viewDiv',
+                zoom: 14,
+                center: [-118.2562675, 34.0548129]
+            });
+
+            let url = 'https://services6.arcgis.com/Do88DoK2xjTUCXd1/ArcGIS/rest/services/OSM_Shops_NA/FeatureServer/0?f=pjson';
+            let shops = new FeatureLayer({
+                url: url,
+                // definitionExpression: "shop = 'supermarket'"
+                popupTemplate: {
+                    title: '{name}',
+                    content: [{
+                        type: 'fields',
+                        fieldInfos: [{
+                            fieldName: 'shop',
+                            visible: true,
+                            label: 'Type'
+                        }]
+                    }]
+                },
+            });
+
+            let options = {responseType: "json"};
+            Request(url, options).then(function(success){
+                // alert('shops loaded');
+                console.log(success);
+            }, function(error){
+                alert('shops not loaded');
+            });          
+            myMap.add(shops);
+
+            var sqlExpressions = ["shop <> 'all shops'", "shop = 'convenience'", "shop = 'clothes'",  "shop = 'shoes'", "shop = 'hairdresser'", "shop = 'beauty'", "shop = 'car_repair'", "shop = 'bakery'", "shop = 'mobile_phone'", "shop = 'alcohol'", "shop = 'car'", "shop = 'gift'"];
+            //var opt_names = ['convenience', 'clothes', 'shoes']
+            //var a = 0
+            var selectFilter = document.createElement("select");
+            selectFilter.setAttribute("class", "esri-widget esri-select");
+            selectFilter.setAttribute("style", "width: 275px; font-family: Avenir Next W00; font-size: 1em;");
+
+            sqlExpressions.forEach(function(sql, a){
+                var option = document.createElement("option");
+                option.value = sql;
+                option.text = sql.split("'")[1];  // opt_names[a];
+                // option.innerHTML = sql;
+                selectFilter.appendChild(option);
+                //a = a + 1
+            });
+            myView.ui.add(selectFilter, "top-right");
+
+            selectFilter.addEventListener('change', function (event) {
+                // setFeatureLayerFilter(event.target.value);
+                setFeatureLayerViewFilter(event.target.value);
+            });
+
+            function setFeatureLayerViewFilter(expression) {
+                myView.whenLayerView(shops).then(function(featureLayerView) {
+                    featureLayerView.effect = {
+                        filter: {
+                            where: expression
+                        },
+                        excludedEffect: "grayscale(100%) invert(100%) opacity(40%)" // grayscale, sepia, hue-rotate, invert, opacity(30%), brightness and contrast
+                    };
+                });
+            };
+
+            let shopsLegend = new Legend({
+                view: myView,
+                layerInfos: [{
+                    layer: shops,
+                    title: "Shops OSM"
+                }]
+            });
+            // myView.ui.add(shopsLegend, 'bottom-right');
+
+            var shopsExpand = new Expand({
+                // expandIconClass: "esri-icon-right-arrow", 
+                // icons https://developers.arcgis.com/javascript/latest/guide/esri-icon-font/index.html
+                view: myView,
+                content: shopsLegend
+            });
+            myView.ui.add(shopsExpand, "bottom-left");
+
+            const parkingSymbol = {
+                type:"picture-marker",
+                url: 'https://image.flaticon.com/icons/svg/2606/2606234.svg',
+                height: "15px"
+            };
+
+            var parkingRenderer = {
+                type: "simple",
+                symbol: parkingSymbol
+            }
+
+            let parkings = new FeatureLayer({
+                url: 'https://maps.lacity.org/lahub/rest/services/LADOT/MapServer/2',
+                // definitionExpression: "Type <> ''",
+                renderer: parkingRenderer,
+                popupTemplate: {
+                    title: "{LotName}",
+                    content: [{
+                        type: "fields",
+                        fieldInfos: [{
+                            fieldName: "Entrance"
+                        }, {
+                            fieldName: "Type"
+                        }, {
+                            fieldName: "Hours"
+                        }, {
+                            fieldName: "HourlyCost",
+                            label: "Hourly Cost"
+                        }, {
+                            fieldName: "SpecialFeatures",
+                            label: "Special Features"
+                        }, {
+                            fieldName: "FacilityID",
+                        }]
+                    }]
+                }
+            });
+            myMap.add(parkings);
+            console.log(parkings);
+
+
+            var sqlExpressions_parkings = ["State <> 'all parkings'", "Type = 'Free' AND Phone <> ''", "Type = 'Operated' AND Phone <> ''", "Type = 'Metered' AND Phone <> ''"];
+            var selectFilter_parkings = document.createElement("select");
+            selectFilter_parkings.setAttribute("class", "esri-widget esri-select");
+            selectFilter_parkings.setAttribute("style", "width: 275px; font-family: Avenir Next W00; font-size: 1em;");
+
+            sqlExpressions_parkings.forEach(function(sql, a){
+                var option = document.createElement("option");
+                option.value = sql;
+                option.text = sql.split("'")[1];  // opt_names[a];
+                // option.innerHTML = sql;
+                selectFilter_parkings.appendChild(option);
+                //a = a + 1
+            });
+            myView.ui.add(selectFilter_parkings, "top-right");
+
+            selectFilter_parkings.addEventListener('change', function (event) {
+                // setFeatureLayerFilter(event.target.value);
+                setFeatureLayerViewFilter(event.target.value);
+            });
+
+            function setFeatureLayerViewFilter_parkings(expression) {
+                myView.whenLayerView(parkings).then(function(featureLayerView) {
+                    featureLayerView.effect = {
+                        filter: {
+                            where: expression
+                        },
+                    };
+                });
+            };
+        })
+    </script>
+</body>
+</html>

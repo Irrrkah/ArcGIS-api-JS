@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irkas web app</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.15/esri/css/main.css">
+    <script src="https://js.arcgis.com/4.15/"></script>
+    <!-- https://developers.arcgis.com/javascript/latest/guide/get-api/ 
+        https://developers.arcgis.com/javascript/latest/guide/styling/ other themes
+        part above from here -->
+    <style>
+        html,
+        body,
+        #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class='header'>
+        <h2 style = 'margin: 10px; 
+                    font-family: Helvetica; 
+                    font-style: normal'> 
+                    Travel Time to Work</h2>
+    </div>
+    <div id="viewDiv"></div>
+    <script>
+        // https://developers.arcgis.com/javascript/latest/api-reference/esri-views-View.html
+        require(["esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/renderers/ClassBreaksRenderer",
+            // "esri/renderers/visualVariables/ColorVariable",
+            "esri/symbols/SimpleFillSymbol",
+            "esri/PopupTemplate",
+            "esri/widgets/Legend",
+            "esri/widgets/Search"
+            ],
+            function (Map, MapView, FeatureLayer, ClassBreaksRenderer, ColorVariable, SimpleFillSymbol, PopupTemplate, Legend, Search) {
+                let myMap = new Map(
+                    {    //  https://developers.arcgis.com/javascript/latest/api-reference/
+                        basemap: 'streets-vector'
+                    }
+                );
+                let myMapView = new MapView(
+                    {
+                        map: myMap,
+                        container: 'viewDiv',
+                        center: [-118.0, 34.0],
+                        zoom: 9
+                    }
+                );
+
+                // let PolyRendererClasses = {
+                //     type: 'class-breaks',
+                //     field: 'B08303_calc_pctGE90E',
+                //     defaultSymbol: {
+                //         type: 'simple-fill',
+                //         color:'#ccdad1',
+                //         outline:{
+                //             width: 0.05,
+                //             color: '#9caea9'
+                //         }
+                //     },
+                //     classBreakInfos: [
+                //         {
+                //             minValue: 0,
+                //             maxValue: 1,
+                //             symbol: {
+                //                 type: 'simple-fill',
+                //                 color: '#9ab87a',
+                //                 outline:{
+                //                     width: 0.01,
+                //                     color: '#1b263b'
+                //                 }
+                //             },
+                //         },
+                //         {
+                //             minValue: 1.1,
+                //             maxValue: 5,
+                //             symbol: {
+                //                 type: 'simple-fill',
+                //                 color: '#708b75',
+                //                 outline:{
+                //                     width: 0.01,
+                //                     color: '#1b263b'
+                //                 }
+                //             },
+                //         },
+                //         {
+                //             minValue: 5.1,
+                //             maxValue: 20,
+                //             symbol: {
+                //                 type: 'simple-fill',
+                //                 color: '#444b6e',
+                //                 outline:{
+                //                     width: 0.01,
+                //                     color: '#1b263b'
+                //                 }
+                //             },
+                //         },
+                //         {
+                //             minValue: 20.1,
+                //             maxValue: 50,
+                //             symbol: {
+                //                 type: 'simple-fill',
+                //                 color: '#3d315b',
+                //                 outline:{
+                //                     width: 0.01,
+                //                     color: '#1b263b'
+                //                 }
+                //             },
+                //         },
+                //         {
+                //             minValue: 50.1,
+                //             maxValue: 57.1,
+                //             symbol: {
+                //                 type: 'simple-fill',
+                //                 color: '#231942',
+                //                 outline: {
+                //                     width: 0.01,
+                //                     color: 'black'
+                //                 }
+                //             },
+                //         },
+                //     ]
+                // };
+
+                
+                let DefaultSymbolContinuous = {
+                    type: "simple-fill",
+                    color: '#ccdad1',
+                    outline: {
+                        width: 0.05,
+                        color: '#ccdad1'
+                    },
+                };
+                let PolyRendererContinuous = {
+                    type: 'simple',
+                    symbol: DefaultSymbolContinuous,
+                    label: "% of workers whose commute was 90 min or more",
+                    visualVariables: [{
+                        type: 'color',
+                        field: 'B08303_calc_pctGE90E',
+                        legendOptions: {title: "YIUHJNJKNKL"},
+                        stops: [
+                            {value: 0,
+                            color: '#9ab87a',
+                            label: '0%'},
+                            {value: 5,
+                            color: '#708b75',
+                            label: '5%'},
+                            {value: 20,
+                            color: '#444b6e',
+                            label: '20%'},
+                            {value: 40,
+                            color: '#3d315b',
+                            label: '40%'},
+                            {value: 57.1,
+                            color: '#231942',
+                            label: '57%'}
+                        ]
+                    }]
+                };
+
+                let myLayer_poly_tract = new FeatureLayer(
+                    {
+                    url: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Travel_Time_to_Work_Boundaries/FeatureServer/2',
+                    //  url: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/ACS_Population_by_Race_and_Hispanic_Origin_Boundaries/FeatureServer/2'
+                    renderer: PolyRendererContinuous,
+                    popupTemplate: {
+                        title: '{NAME}',
+                        content: [{
+                            type: 'fields',
+                            fieldInfos: [
+                                {
+                                fieldName: 'B08303_calc_pctGE90E',
+                                visible: true,
+                                label: '% of workers whose commute was 90 min or more'
+                                },
+                                {
+                                fieldName: 'County',
+                                visible: true
+                                }
+                            ]
+                        }]
+                    }
+                    }
+                );
+
+                let Counties_travel90 = new FeatureLayer({
+                    url: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Travel_Time_to_Work_Boundaries/FeatureServer/1',
+                    renderer: PolyRendererContinuous,
+                    popupTemplate: {
+                        title: '{Name}',
+                        content: [{
+                            type: 'fields',
+                            fieldInfos: [
+                                {
+                                fieldName: 'B08303_calc_pctGE90E',
+                                visible: true,
+                                label: '% of workers whose commute was 90 min or more',
+                                },
+                                {
+                                fieldName: 'STATE',
+                                visible: true
+                                },
+                                {
+                                fieldName: 'B08303_001E',
+                                visible: true,
+                                label: 'Total commuters (Workers 16 years and over who did not work at home)'
+                                }
+                            ]
+                        }]
+                    }
+                });
+
+                let States_travel90 = new FeatureLayer({
+                    url: 'https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/ACS_Travel_Time_to_Work_Boundaries/FeatureServer/0',
+                    renderer: PolyRendererContinuous,
+                    popupTemplate: {
+                        title: '{Name}',
+                        content: [{
+                            type: 'fields',
+                            fieldInfos: [
+                                {
+                                fieldName: 'B08303_calc_pctGE90E',
+                                visible: true,
+                                label: '% of workers whose commute was 90 min or more',
+                                },
+                                {
+                                fieldName: 'B08303_001E',
+                                visible: true,
+                                label: 'Total commuters (Workers 16 years and over who did not work at home)'
+                                }
+                            ]
+                        }]
+                    }
+                });
+
+                myMap.add(myLayer_poly_tract);
+                myMap.add(Counties_travel90);
+                myMap.add(States_travel90);
+
+                myMapView.when(function () {
+                    let myLegend = new Legend({
+                        view: myMapView,
+                        layerInfos: [{
+                            layer: myLayer_poly_tract,
+                            title: 'BFJKLGH'
+                            }],
+                    });
+                // console.log(myLegend.container);
+                myMapView.ui.add(myLegend, 'bottom-right');
+                });
+
+                const mySearch = new Search({
+                    view: myMapView
+                });
+                myMapView.ui.add(mySearch, 'bottom-right');
+            });
+
+    </script>
+</body>
+ 
+</html> 
